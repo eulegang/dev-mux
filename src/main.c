@@ -18,11 +18,19 @@
 
 static struct termios original_termios;
 static bool terminal_is_raw;
+static bool alternate_screen_active;
 static volatile sig_atomic_t resize_pending;
 static volatile sig_atomic_t stop_requested;
 
+static int write_all(int fd, const void *data, size_t size);
+
 static void restore_terminal(void)
 {
+    if (alternate_screen_active) {
+        static const char leave[] = "\x1b[?1049l";
+        write_all(STDOUT_FILENO, leave, sizeof(leave) - 1);
+        alternate_screen_active = false;
+    }
     if (terminal_is_raw) {
         tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios);
         terminal_is_raw = false;
@@ -145,6 +153,12 @@ int main(void)
         install_handler(SIGTERM) < 0 ||
         install_handler(SIGHUP) < 0) {
         perror("terminal setup");
+        goto cleanup;
+    }
+    static const char enter[] = "\x1b[?1049h\x1b[2J\x1b[H";
+    alternate_screen_active = true;
+    if (write_all(STDOUT_FILENO, enter, sizeof(enter) - 1) < 0) {
+        perror("enter alternate screen");
         goto cleanup;
     }
 
