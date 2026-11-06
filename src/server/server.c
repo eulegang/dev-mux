@@ -3,6 +3,8 @@
 #include "../protocol/io.h"
 #include "../protocol/protocol.h"
 
+#include "runtime.h"
+
 #include <limits.h>
 
 #include <errno.h>
@@ -30,7 +32,7 @@ typedef enum {
   PHASE_INIT,
   PHASE_LOG,
   PHASE_LISTENING,
-
+  PHASE_RUNTIME,
 } phase_t;
 
 static phase_t server_phase = PHASE_INIT;
@@ -40,7 +42,8 @@ static char server_socket_path[PATH_MAX] = {0};
 static void server_cleanup() {
   /// Meaning to fallthrough here
   switch (server_phase) {
-
+  case PHASE_RUNTIME:
+    server_runtime_deinit();
   case PHASE_LISTENING:
     if (server_socket != -1) {
       close(server_socket);
@@ -130,7 +133,15 @@ int run_server(server_opt_t options) {
 
   server_setup_signals();
 
+  if (server_runtime_init(server_socket)) {
+    exit(EXIT_FAILURE);
+  }
+
+  server_phase = PHASE_RUNTIME;
+
   syslog(LOG_INFO, "server started on %s", server_socket_path);
+
+  server_runtime_run();
 
   return 0;
 }

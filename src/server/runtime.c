@@ -1,157 +1,112 @@
+#include "runtime.h"
 
+#include <stdlib.h>
+#include <sys/event.h>
+#include <sys/socket.h>
+#include <syslog.h>
+#include <unistd.h>
 
-// void server_run_pane() {
-//
-// struct winsize initial_size = {.ws_row = 24, .ws_col = 80};
-// child = forkpty(&master, NULL, NULL, &initial_size);
-// if (child < 0) {
-//   perror("forkpty");
-//   goto cleanup;
-// }
-// if (child == 0) {
-//   closelog();
-//   close(listener);
-//   const char *shell = getenv("SHELL");
-//   if (shell == NULL || *shell == '\0') {
-//     shell = "/bin/sh";
-//   }
-//   execl(shell, shell, (char *)NULL);
-//   perror("exec shell");
-//   _exit(127);
-// }
-//
-// }
+static int server_queue = -1;
 
-// if (client >= 0) {
-//   close(client);
-// }
-// if (child > 0) {
-//   if (kill(-child, SIGHUP) < 0 && errno != ESRCH) {
-//     perror("signal shell");
-//   }
-//   close(master);
-//   while (waitpid(child, NULL, 0) < 0 && errno == EINTR) {
-//   }
-// }
-//
+struct runtime_handler {
+  int fd;
+  void (*handle)(struct runtime_handler *, struct kevent event);
+  void *udata;
+};
 
-//
-//
-//
-// void server_runtime() {
-//
-// unsigned char frame[5];
-// while (!stopping) {
-//   struct pollfd fds[3] = {
-//       {.fd = listener, .events = POLLIN},
-//       {.fd = master, .events = POLLIN},
-//       {.fd = client, .events = POLLIN},
-//   };
-//   if (poll(fds, 3, -1) < 0) {
-//     if (errno == EINTR) {
-//       continue;
-//     }
-//     perror("poll");
-//     break;
-//   }
-//   if (fds[0].revents & POLLIN) {
-//     int incoming = accept(listener, NULL, NULL);
-//     if (incoming >= 0) {
-//       if (client >= 0) {
-//         close(incoming); /* This prototype supports one attached client. */
-//       } else {
-//         client = incoming;
-//         have = 0;
-//       }
-//     } else if (errno != EINTR) {
-//       perror("accept");
-//       break;
-//     }
-//   }
-//   if (fds[1].revents & (POLLIN | POLLHUP | POLLERR)) {
-//     unsigned char buffer[4096];
-//     ssize_t count = read(master, buffer, sizeof(buffer));
-//     if (count > 0) {
-//       if (client >= 0 && write_all(client, buffer, (size_t)count) < 0) {
-//         disconnect_client(&client, &have);
-//       }
-//     } else if (count == 0 || (count < 0 && errno == EIO)) {
-//       result = EXIT_SUCCESS;
-//       break;
-//     } else if (errno != EINTR) {
-//       perror("read PTY");
-//       break;
-//     }
-//   }
-//   if (client >= 0 && fds[2].fd == client &&
-//       (fds[2].revents & (POLLIN | POLLHUP | POLLERR))) {
-//     unsigned char buffer[4096];
-//     ssize_t count = read(client, buffer, sizeof(buffer));
-//     if (count <= 0) {
-//       if (count < 0 && errno == EINTR) {
-//         continue;
-//       }
-//       disconnect_client(&client, &have);
-//     } else {
-//       for (ssize_t i = 0; i < count; i++) {
-//         frame[have++] = buffer[i];
-//         size_t needed = frame[0] == MSG_RESIZE  ? 5
-//                         : frame[0] == MSG_INPUT ? 2
-//                                                 : 1;
-//         if (have != needed) {
-//           continue;
-//         }
-//         bool quit = false, detach = false;
-//         if (handle_message(frame, master, &quit, &detach) < 0) {
-//           perror("client message");
-//           disconnect_client(&client, &have);
-//           break;
-//         }
-//         have = 0;
-//         if (quit) {
-//           stopping = 1;
-//           break;
-//         }
-//         if (detach) {
-//           disconnect_client(&client, &have);
-//           break;
-//         }
-//       }
-//     }
-//   }
-// }
-// if (stopping) {
-//   result = EXIT_SUCCESS;
-// }
-//
-//}
-//
-//
-//
-// static void disconnect_client(int *client, size_t *have) {
-//   if (*client >= 0) {
-//     close(*client);
-//     *client = -1;
-//   }
-//   *have = 0;
-// }
-//
-// static int handle_message(const unsigned char *frame, int master, bool *quit,
-//                           bool *detach) {
-//   if (frame[0] == MSG_INPUT) {
-//     return write_all(master, frame + 1, 1);
-//   }
-//   if (frame[0] == MSG_RESIZE) {
-//     struct winsize size = {0};
-//     size.ws_row = (unsigned short)((frame[1] << 8) | frame[2]);
-//     size.ws_col = (unsigned short)((frame[3] << 8) | frame[4]);
-//     return ioctl(master, TIOCSWINSZ, &size);
-//   }
-//   if (frame[0] == MSG_DETACH) {
-//     *detach = true;
-//   } else if (frame[0] == MSG_QUIT) {
-//     *quit = true;
-//   }
-//   return 0;
-// }
-//
+static void server_runtime_client_handler(struct runtime_handler *handler,
+                                          struct kevent event) {
+  (void)handler;
+  (void)event;
+
+  write(handler->fd, "hello world\n", 12);
+
+  close(handler->fd);
+}
+
+static void server_runtime_listener_handler(struct runtime_handler *handler,
+                                            struct kevent event) {
+  (void)event;
+
+  int fd = accept(handler->fd, NULL, NULL);
+  if (fd == -1)
+    return;
+
+  struct runtime_handler *client_handler =
+      malloc(sizeof(struct runtime_handler));
+  if (!client_handler) {
+    syslog(LOG_ERR, "failed to setup client handler");
+    return;
+  }
+
+  client_handler->fd = fd;
+  client_handler->handle = server_runtime_client_handler;
+  client_handler->udata = NULL;
+
+  struct kevent change;
+  EV_SET(&change, fd, EVFILT_READ, EV_ADD, 0, 0, client_handler);
+
+  if (kevent(server_queue, &change, 1, NULL, 0, NULL) < 0) {
+    free(client_handler);
+
+    syslog(LOG_ERR, "failed to setup client handler");
+    return;
+  }
+}
+
+int server_runtime_init(int listener) {
+  server_queue = kqueue();
+
+  if (server_queue == -1) {
+    syslog(LOG_ERR, "failed to listen to event queue: %m");
+    return -1;
+  }
+
+  struct runtime_handler *handler = malloc(sizeof(struct runtime_handler));
+  if (!handler) {
+    syslog(LOG_ERR, "failed to allocate listener runtime handler");
+    return -1;
+  }
+
+  handler->fd = listener;
+  handler->handle = server_runtime_listener_handler;
+  handler->udata = NULL;
+
+  struct kevent changes;
+  EV_SET(&changes, listener, EVFILT_READ, EV_ADD, 0, 0, handler);
+
+  if (kevent(server_queue, &changes, 1, NULL, 0, NULL) < 0) {
+    syslog(LOG_ERR, "failed to setup listener: %m");
+    return -1;
+  }
+
+  return 0;
+}
+
+void server_runtime_run() {
+  while (1) {
+    struct kevent event;
+
+    int n = kevent(server_queue, NULL, 0, &event, 1, NULL);
+
+    if (n < 0) {
+      syslog(LOG_ERR, "failed to wait on queue: %m");
+      return;
+    }
+
+    if (n != 1) {
+      continue;
+    }
+
+    if (event.udata) {
+      struct runtime_handler *handler = event.udata;
+      handler->handle(handler, event);
+    }
+  }
+}
+
+void server_runtime_deinit() {
+  if (server_queue != -1) {
+    close(server_queue);
+  }
+}

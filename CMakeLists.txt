@@ -15,6 +15,7 @@ add_executable(
 	src/protocol/protocol.c
 
 	src/server/server.c
+	src/server/runtime.c
 
 	src/client/client.c
 	src/client/terminal.c
