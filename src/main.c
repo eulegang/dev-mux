@@ -16,9 +16,9 @@ int main(int argc, char **argv) {
         return 1;
       }
 
-      run_server(options);
+      return run_server(options);
     } else if (strcmp(argv[1], "client") == 0) {
-      run_client();
+      return run_client();
     } else {
       fprintf(stderr, "usage: %s [server|attach]\n", argv[0]);
     }
