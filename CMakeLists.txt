@@ -11,11 +11,11 @@ add_executable(
 	src/main.c 
 	src/cli.c
 
-	src/protocol/io.c
 	src/protocol/protocol.c
 
 	src/server/server.c
 	src/server/runtime.c
+	src/server/handle.c
 
 	src/client/client.c
 	src/client/terminal.c

@@ -1,6 +1,5 @@
 #include "server.h"
 
-#include "../protocol/io.h"
 #include "../protocol/protocol.h"
 
 #include "runtime.h"

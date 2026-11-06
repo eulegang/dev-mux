@@ -1,4 +1,5 @@
 #include "runtime.h"
+#include "handle.h"
 
 #include <stdlib.h>
 #include <sys/event.h>
@@ -16,12 +17,10 @@ struct runtime_handler {
 
 static void server_runtime_client_handler(struct runtime_handler *handler,
                                           struct kevent event) {
-  (void)handler;
   (void)event;
+  server_handle *handle = handler->udata;
 
-  write(handler->fd, "hello world\n", 12);
-
-  close(handler->fd);
+  server_handle_read(handle);
 }
 
 static void server_runtime_listener_handler(struct runtime_handler *handler,
@@ -34,24 +33,36 @@ static void server_runtime_listener_handler(struct runtime_handler *handler,
 
   struct runtime_handler *client_handler =
       malloc(sizeof(struct runtime_handler));
+
   if (!client_handler) {
-    syslog(LOG_ERR, "failed to setup client handler");
-    return;
+    goto free_handler;
   }
 
   client_handler->fd = fd;
   client_handler->handle = server_runtime_client_handler;
-  client_handler->udata = NULL;
+  client_handler->udata = server_handle_init(fd);
+
+  if (!client_handler->udata) {
+    goto free_handle;
+  }
 
   struct kevent change;
   EV_SET(&change, fd, EVFILT_READ, EV_ADD, 0, 0, client_handler);
 
   if (kevent(server_queue, &change, 1, NULL, 0, NULL) < 0) {
-    free(client_handler);
-
-    syslog(LOG_ERR, "failed to setup client handler");
-    return;
+    goto free_handle;
   }
+
+  return;
+
+free_handle:
+  server_handle_deinit(client_handler->udata);
+
+free_handler:
+  free(client_handler);
+
+  syslog(LOG_ERR, "failed to setup client handler");
+  close(fd);
 }
 
 int server_runtime_init(int listener) {

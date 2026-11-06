@@ -1,6 +1,5 @@
 #include "client.h"
 
-#include "../protocol/io.h"
 #include "../protocol/protocol.h"
 #include "terminal.h"
 
@@ -81,9 +80,8 @@ int run_client(void) {
   assert_termial();
   struct sockaddr_un address = {.sun_family = AF_UNIX};
   if (session_socket_path(address.sun_path, sizeof(address.sun_path)) < 0) {
-    fprintf(
-        stderr,
-        "dev-mux: HOME/XDG_RUNTIME_DIR is missing or socket path is too long\n");
+    fprintf(stderr, "dev-mux: HOME/XDG_RUNTIME_DIR is missing or socket path "
+                    "is too long\n");
     return EXIT_FAILURE;
   }
   int socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);

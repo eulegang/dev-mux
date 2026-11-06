@@ -1,7 +1,9 @@
 #include "protocol.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -18,4 +20,129 @@ int session_socket_path(char *buffer, size_t capacity) {
     return -1;
   }
   return length >= 0 && (size_t)length < capacity ? 0 : -1;
+}
+
+int write_all(int fd, const void *data, size_t size) {
+  const unsigned char *bytes = data;
+  while (size != 0) {
+    ssize_t written = write(fd, bytes, size);
+    if (written < 0 && errno == EINTR) {
+      continue;
+    }
+    if (written <= 0) {
+      return -1;
+    }
+    bytes += written;
+    size -= (size_t)written;
+  }
+  return 0;
+}
+
+buffer *buffer_init(uint16_t cap) {
+  buffer *buffer = malloc(sizeof(struct buffer));
+  if (!buffer)
+    return NULL;
+
+  buffer->buffer = malloc(cap);
+  buffer->cap = cap;
+  buffer->len = 0;
+  buffer->last_msg = 0xffff;
+
+  return buffer;
+}
+
+void buffer_deinit(buffer *self) {
+  if (self) {
+    free(self->buffer);
+    free(self);
+  }
+}
+
+ssize_t buffer_fill(buffer *self, int fd) {
+  ssize_t n = read(fd, self->buffer + self->len, self->cap - self->len);
+
+  if (n <= 0) {
+    return n;
+  }
+
+  self->len += n;
+
+  return n;
+}
+
+msg_tlv *buffer_message(buffer *self) {
+  if (self->len < sizeof(msg_tlv)) {
+    return NULL;
+  }
+
+  msg_tlv *msg = (msg_tlv *)self->buffer;
+
+  if (msg->len < self->len + sizeof(msg_tlv)) {
+    return NULL;
+  }
+
+  return msg;
+}
+
+void buffer_chomp(buffer *self) {
+  msg_tlv *msg = buffer_message(self);
+  if (msg) {
+    uint16_t len = msg->len;
+
+    memcpy(self->buffer, self->buffer + len, len);
+    self->len -= len;
+  }
+}
+
+ssize_t buffer_push_msg(buffer *self, uint16_t tag) {
+  if (self->len + sizeof(msg_tlv) >= self->cap) {
+    return -1;
+  }
+
+  self->last_msg = self->len;
+
+  msg_tlv *msg = (msg_tlv *)(self->buffer + self->len);
+
+  msg->tag = tag;
+  msg->len = 0;
+
+  return 0;
+}
+
+ssize_t buffer_push_data(buffer *self, const uint8_t *bytes, size_t len) {
+  if (self->last_msg == 0xFFFF) {
+    return -1;
+  }
+
+  if (self->len + len >= self->cap) {
+    return -1;
+  }
+
+  msg_tlv *msg = (msg_tlv *)(self->buffer + self->last_msg);
+
+  memcpy(self->buffer + self->len, bytes, len);
+  self->len += len;
+  msg->len += (uint16_t)len;
+
+  return 0;
+}
+ssize_t buffer_flush(buffer *self, int fd) {
+  const char *bytes = self->buffer;
+  size_t size = self->len;
+
+  while (size != 0) {
+    ssize_t written = write(fd, bytes, size);
+    if (written < 0 && errno == EINTR) {
+      continue;
+    }
+    if (written <= 0) {
+      return -1;
+    }
+    bytes += written;
+    size -= (size_t)written;
+  }
+
+  self->len = 0;
+
+  return 0;
 }
