@@ -1,7 +1,7 @@
 #include "client.h"
 
-#include "io.h"
-#include "protocol.h"
+#include "../protocol/io.h"
+#include "../protocol/protocol.h"
 #include "terminal.h"
 
 #include <errno.h>
@@ -38,10 +38,9 @@ static int send_size(int socket_fd) {
   if (window_get_size(&size) < 0) {
     return -1;
   }
-  unsigned char frame[5] = {MSG_RESIZE, (unsigned char)(size.ws_row >> 8),
-                            (unsigned char)size.ws_row,
-                            (unsigned char)(size.ws_col >> 8),
-                            (unsigned char)size.ws_col};
+  unsigned char frame[5] = {
+      MSG_RESIZE, (unsigned char)(size.ws_row >> 8), (unsigned char)size.ws_row,
+      (unsigned char)(size.ws_col >> 8), (unsigned char)size.ws_col};
   return write_all(socket_fd, frame, sizeof(frame));
 }
 
@@ -82,7 +81,9 @@ int run_client(void) {
   assert_termial();
   struct sockaddr_un address = {.sun_family = AF_UNIX};
   if (session_socket_path(address.sun_path, sizeof(address.sun_path)) < 0) {
-    fprintf(stderr, "twind: HOME/XDG_RUNTIME_DIR is missing or socket path is too long\n");
+    fprintf(
+        stderr,
+        "twind: HOME/XDG_RUNTIME_DIR is missing or socket path is too long\n");
     return EXIT_FAILURE;
   }
   int socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -151,7 +152,8 @@ int run_client(void) {
       unsigned char buffer[4096];
       ssize_t count = read(STDIN_FILENO, buffer, sizeof(buffer));
       if (count > 0) {
-        if (forward_keys(socket_fd, buffer, (size_t)count, &prefix, &done) < 0) {
+        if (forward_keys(socket_fd, buffer, (size_t)count, &prefix, &done) <
+            0) {
           perror("send input");
           break;
         }

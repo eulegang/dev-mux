@@ -4,7 +4,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "io.h"
+#include "../protocol/io.h"
 #include "terminal.h"
 
 struct winsize term_size;

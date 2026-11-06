@@ -1,7 +1,7 @@
 #include "server.h"
 
-#include "io.h"
-#include "protocol.h"
+#include "../protocol/io.h"
+#include "../protocol/protocol.h"
 
 #include <errno.h>
 #include <poll.h>
@@ -11,8 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <sys/stat.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <termios.h>
@@ -57,10 +57,12 @@ static int handle_message(const unsigned char *frame, int master, bool *quit,
   return 0;
 }
 
-int run_server(void) {
+int run_server(server_opt_t) {
   struct sockaddr_un address = {.sun_family = AF_UNIX};
   if (session_socket_path(address.sun_path, sizeof(address.sun_path)) < 0) {
-    fprintf(stderr, "twind: HOME/XDG_RUNTIME_DIR is missing or socket path is too long\n");
+    fprintf(
+        stderr,
+        "twind: HOME/XDG_RUNTIME_DIR is missing or socket path is too long\n");
     return EXIT_FAILURE;
   }
   int listener = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -172,8 +174,9 @@ int run_server(void) {
       } else {
         for (ssize_t i = 0; i < count; i++) {
           frame[have++] = buffer[i];
-          size_t needed = frame[0] == MSG_RESIZE ? 5 :
-                          frame[0] == MSG_INPUT ? 2 : 1;
+          size_t needed = frame[0] == MSG_RESIZE  ? 5
+                          : frame[0] == MSG_INPUT ? 2
+                                                  : 1;
           if (have != needed) {
             continue;
           }
