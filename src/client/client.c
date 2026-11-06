@@ -83,7 +83,7 @@ int run_client(void) {
   if (session_socket_path(address.sun_path, sizeof(address.sun_path)) < 0) {
     fprintf(
         stderr,
-        "twind: HOME/XDG_RUNTIME_DIR is missing or socket path is too long\n");
+        "dev-mux: HOME/XDG_RUNTIME_DIR is missing or socket path is too long\n");
     return EXIT_FAILURE;
   }
   int socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -92,7 +92,7 @@ int run_client(void) {
     return EXIT_FAILURE;
   }
   if (connect(socket_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-    perror("connect (start a session with 'twind server')");
+    perror("connect (start a session with 'dev-mux server')");
     close(socket_fd);
     return EXIT_FAILURE;
   }

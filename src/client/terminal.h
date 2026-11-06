@@ -1,5 +1,5 @@
-#ifndef TWIND_WINDOW_H
-#define TWIND_WINDOW_H
+#ifndef DEV_MUX_TERMINAL_H
+#define DEV_MUX_TERMINAL_H
 
 #include <sys/ioctl.h>
 

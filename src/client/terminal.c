@@ -16,7 +16,7 @@ static bool term_is_alt = false;
 
 void assert_termial() {
   if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) {
-    fprintf(stderr, "twind: stdin and stdout must be terminals\n");
+    fprintf(stderr, "dev-mux: stdin and stdout must be terminals\n");
     exit(EXIT_FAILURE);
   }
 }

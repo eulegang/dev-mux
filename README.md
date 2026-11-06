@@ -1,4 +1,4 @@
-# twind
+# dev-mux
 
 An early terminal multiplexer prototype in C.
 
@@ -14,16 +14,16 @@ cmake --build build
 Start the server in one terminal (or in the background):
 
 ```sh
-./build/twind server
+./build/dev-mux server
 ```
 
 Attach from another terminal:
 
 ```sh
-./build/twind attach
+./build/dev-mux attach
 ```
 
-`./build/twind` also attaches.
+`./build/dev-mux` also attaches.
 Press `Ctrl-b d` to detach and keep the shell running; attach again later to reuse it.
 Press `Ctrl-b q` to stop the server and shell, or `Ctrl-b Ctrl-b` to send a literal `Ctrl-b` to the shell.
 Exiting the shell also stops the server.
@@ -32,5 +32,5 @@ The client clears the alternate screen on attach and restores your original scre
 The server accepts one attached client at a time and uses a private Unix socket in `$XDG_RUNTIME_DIR` or `$HOME`.
 If the server is killed without cleaning up, remove its stale socket before restarting.
 Output produced while detached is discarded; there is no screen replay yet.
-Because output is passed through without VT parsing, full-screen applications that switch the alternate screen themselves may disrupt twind's screen.
+Because output is passed through without VT parsing, full-screen applications that switch the alternate screen themselves may disrupt dev-mux's screen.
 Next steps are a VT screen parser, multiple panes, and screen replay on reattach.

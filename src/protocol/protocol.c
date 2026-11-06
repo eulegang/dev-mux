@@ -10,10 +10,10 @@ int session_socket_path(char *buffer, size_t capacity) {
   const char *home = getenv("HOME");
   int length;
   if (runtime != NULL && *runtime != '\0') {
-    length = snprintf(buffer, capacity, "%s/twind-%lu.sock", runtime,
+    length = snprintf(buffer, capacity, "%s/dev-mux-%lu.sock", runtime,
                       (unsigned long)getuid());
   } else if (home != NULL && *home != '\0') {
-    length = snprintf(buffer, capacity, "%s/.twind.sock", home);
+    length = snprintf(buffer, capacity, "%s/.dev-mux.sock", home);
   } else {
     return -1;
   }

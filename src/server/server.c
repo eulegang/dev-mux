@@ -62,7 +62,7 @@ int run_server(server_opt_t) {
   if (session_socket_path(address.sun_path, sizeof(address.sun_path)) < 0) {
     fprintf(
         stderr,
-        "twind: HOME/XDG_RUNTIME_DIR is missing or socket path is too long\n");
+        "dev-mux: HOME/XDG_RUNTIME_DIR is missing or socket path is too long\n");
     return EXIT_FAILURE;
   }
   int listener = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -117,7 +117,7 @@ int run_server(server_opt_t) {
     perror("sigaction SIGPIPE");
     goto cleanup;
   }
-  fprintf(stderr, "twind: session listening at %s\n", address.sun_path);
+  fprintf(stderr, "dev-mux: session listening at %s\n", address.sun_path);
 
   unsigned char frame[5];
   while (!stopping) {

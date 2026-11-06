@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
-project(twind VERSION 0.1.0 LANGUAGES C)
+project(dev-mux VERSION 0.1.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
 add_executable(
-	twind 
+	dev-mux
 
 	src/main.c 
 	src/cli.c
@@ -22,12 +22,12 @@ add_executable(
 
 
 if(APPLE)
-    target_compile_definitions(twind PRIVATE _DARWIN_C_SOURCE)
+    target_compile_definitions(dev-mux PRIVATE _DARWIN_C_SOURCE)
 else()
-    target_compile_definitions(twind PRIVATE _DEFAULT_SOURCE)
+    target_compile_definitions(dev-mux PRIVATE _DEFAULT_SOURCE)
 endif()
-target_compile_options(twind PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_options(dev-mux PRIVATE -Wall -Wextra -Wpedantic)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(twind PRIVATE util)
+    target_link_libraries(dev-mux PRIVATE util)
 endif()
