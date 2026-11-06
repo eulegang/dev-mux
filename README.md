@@ -7,15 +7,30 @@ An early terminal multiplexer prototype in C.
 ```sh
 cmake -S . -B build
 cmake --build build
-./build/twind
 ```
 
-Run it from a terminal, not a pipe.
-It switches to and clears the terminal's alternate screen, starts your `$SHELL` (or `/bin/sh`) in a pseudo-terminal, and forwards input and output.
-Your original screen returns when twind exits.
-Press `Ctrl-b q` to quit, or `Ctrl-b Ctrl-b` to send a literal `Ctrl-b` to the shell.
-Exiting the shell also exits twind.
+## Run
 
-This is the PTY foundation, not yet a pane-based multiplexer.
+Start the server in one terminal (or in the background):
+
+```sh
+./build/twind server
+```
+
+Attach from another terminal:
+
+```sh
+./build/twind attach
+```
+
+`./build/twind` also attaches.
+Press `Ctrl-b d` to detach and keep the shell running; attach again later to reuse it.
+Press `Ctrl-b q` to stop the server and shell, or `Ctrl-b Ctrl-b` to send a literal `Ctrl-b` to the shell.
+Exiting the shell also stops the server.
+The client clears the alternate screen on attach and restores your original screen on exit.
+
+The server accepts one attached client at a time and uses a private Unix socket in `$XDG_RUNTIME_DIR` or `$HOME`.
+If the server is killed without cleaning up, remove its stale socket before restarting.
+Output produced while detached is discarded; there is no screen replay yet.
 Because output is passed through without VT parsing, full-screen applications that switch the alternate screen themselves may disrupt twind's screen.
-Next steps are multiple PTYs, a VT screen parser for each pane, layout and rendering, and finally an attachable session server.
+Next steps are a VT screen parser, multiple panes, and screen replay on reattach.

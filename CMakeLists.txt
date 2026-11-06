@@ -11,6 +11,9 @@ add_executable(
 	src/main.c 
 	src/terminal.c
 	src/io.c
+	src/protocol.c
+	src/server.c
+	src/client.c
 )
 
 
