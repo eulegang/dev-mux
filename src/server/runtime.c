@@ -1,6 +1,7 @@
 #include "runtime.h"
 #include "handle.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/event.h>
 #include <sys/socket.h>
@@ -83,10 +84,12 @@ int server_runtime_init(int listener) {
   handler->handle = server_runtime_listener_handler;
   handler->udata = NULL;
 
-  struct kevent changes;
-  EV_SET(&changes, listener, EVFILT_READ, EV_ADD, 0, 0, handler);
+  struct kevent changes[3];
+  EV_SET(&changes[0], listener, EVFILT_READ, EV_ADD, 0, 0, handler);
+  EV_SET(&changes[1], SIGTERM, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
+  EV_SET(&changes[2], SIGINT, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
 
-  if (kevent(server_queue, &changes, 1, NULL, 0, NULL) < 0) {
+  if (kevent(server_queue, changes, 3, NULL, 0, NULL) < 0) {
     syslog(LOG_ERR, "failed to setup listener: %m");
     return -1;
   }
@@ -109,7 +112,13 @@ void server_runtime_run() {
       continue;
     }
 
-    if (event.udata) {
+    if (event.filter == EVFILT_SIGNAL) {
+      if (event.ident == SIGTERM || event.ident == SIGINT) {
+        syslog(LOG_INFO, "gracefully shuting down");
+        return;
+      }
+
+    } else if (event.filter == EVFILT_READ && event.udata) {
       struct runtime_handler *handler = event.udata;
       handler->handle(handler, event);
     }
