@@ -1,3 +1,7 @@
 #pragma once
 
-int run_client(void);
+typedef struct {
+  char *unix;
+} client_opt_t;
+
+int run_client(client_opt_t options);

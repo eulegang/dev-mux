@@ -17,8 +17,13 @@ int main(int argc, char **argv) {
       }
 
       return run_server(options);
-    } else if (strcmp(argv[1], "client") == 0) {
-      return run_client();
+    } else if (strcmp(argv[1], "attach") == 0) {
+      client_opt_t options;
+      if (parse_client_options(&options, argc - 2, argv + 2) != 0) {
+        return 1;
+      }
+
+      return run_client(options);
     } else {
       fprintf(stderr, "usage: %s [server|attach]\n", argv[0]);
     }

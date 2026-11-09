@@ -21,6 +21,8 @@ add_executable(
 
 	src/client/client.c
 	src/client/terminal.c
+	src/client/signals.c
+	src/client/network.c
 )
 
 
