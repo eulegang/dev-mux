@@ -12,17 +12,16 @@ add_executable(
 	src/cli.c
 
 	src/protocol/protocol.c
+	src/protocol/network.c
 
 	src/server/server.c
 	src/server/runtime.c
 	src/server/handle.c
-	src/server/network.c
 	src/server/signals.c
 
 	src/client/client.c
 	src/client/terminal.c
 	src/client/signals.c
-	src/client/network.c
 )
 
 

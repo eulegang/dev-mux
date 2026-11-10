@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits.h>
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -45,3 +46,9 @@ ssize_t buffer_flush(buffer *, int fd);
 ssize_t buffer_fill(buffer *, int);
 msg_tlv *buffer_message(buffer *);
 void buffer_chomp(buffer *);
+
+extern int socket_fd;
+extern char socket_path[PATH_MAX];
+int socket_connect(char *path);
+int socket_serve(char *path);
+void socket_deinit();

@@ -1,7 +1,6 @@
 #include "client.h"
 
 #include "../protocol/protocol.h"
-#include "network.h"
 #include "terminal.h"
 
 #include <errno.h>
@@ -31,7 +30,7 @@ void client_cleanup(void) {
     terminal_exit();
 
   case PHASE_SOCKET:
-    close(client_socket);
+    socket_deinit();
 
   case PHASE_LOG:
     closelog();
@@ -41,6 +40,7 @@ void client_cleanup(void) {
   }
 }
 
+char client_unix_path[PATH_MAX];
 int run_client(client_opt_t options) {
   atexit(client_cleanup);
 
@@ -48,7 +48,7 @@ int run_client(client_opt_t options) {
   client_phase = PHASE_LOG;
 
   assert_termial();
-  client_connect(options.unix);
+  socket_connect(options.unix);
   client_phase = PHASE_SOCKET;
   terminal_init();
   terminal_enter();
