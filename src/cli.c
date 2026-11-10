@@ -52,7 +52,7 @@ int parse_client_options(client_opt_t *options, int argc, char **argv) {
 
   int ch;
 
-  while ((ch = getopt_long(argc, argv, "hu:", server_longopts, NULL)) != -1) {
+  while ((ch = getopt_long(argc, argv, "hu:", client_longopts, NULL)) != -1) {
     switch (ch) {
     case 'u':
       options->unix = optarg;

@@ -24,7 +24,7 @@ typedef enum {
 
 static PHASE client_phase = PHASE_INIT;
 
-void client_cleanup(void) {
+static void client_cleanup(void) {
   switch (client_phase) {
   case PHASE_TERMINAL:
     terminal_exit();
