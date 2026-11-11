@@ -36,6 +36,7 @@ server_handle *server_handle_init(int fd) {
 
 void server_handle_read(server_handle *self) {
   ssize_t n = buffer_fill(self->inbuf, self->fd);
+  syslog(LOG_DEBUG, "reading %zd bytes from client", n);
   if (n < 0) {
     syslog(LOG_ERR, "client connection buffer overflown");
     server_handle_deinit(self);
@@ -50,6 +51,7 @@ void server_handle_read(server_handle *self) {
   msg_tlv *msg = buffer_message(self->inbuf);
 
   if (msg) {
+    syslog(LOG_DEBUG, "successfully found a message");
     server_handle_process(self, msg);
 
     buffer_chomp(self->inbuf);
