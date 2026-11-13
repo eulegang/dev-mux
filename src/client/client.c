@@ -11,9 +11,10 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <syslog.h>
 #include <unistd.h>
 
-#include <syslog.h>
+#include "../reactor.h"
 
 typedef enum {
   PHASE_INIT,
@@ -54,5 +55,14 @@ int run_client(client_opt_t options) {
   terminal_enter();
   client_phase = PHASE_TERMINAL;
   int result = EXIT_FAILURE;
+
+  reactor_t *reactor = reactor_init();
+
+  // reactor_add_read(reactor, 0, NULL, NULL);
+  // reactor_add_read(reactor, socket_fd, NULL, NULL);
+  //
+  // reactor_add_write(reactor, 1, NULL, NULL);
+  // reactor_add_write(reactor, socket_fd, NULL, NULL);
+
   return result;
 }
