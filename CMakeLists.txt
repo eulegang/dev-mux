@@ -5,6 +5,9 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBUV REQUIRED IMPORTED_TARGET libuv)
+
 add_executable(
 	dev-mux
 
@@ -24,6 +27,7 @@ add_executable(
 	src/client/signals.c
 )
 
+target_link_libraries(dev-mux PRIVATE PkgConfig::LIBUV)
 
 if(APPLE)
     target_compile_definitions(dev-mux PRIVATE _DARWIN_C_SOURCE)
