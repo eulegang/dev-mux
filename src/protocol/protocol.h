@@ -21,6 +21,8 @@ typedef struct msg_tlv {
 } msg_tlv;
 
 #define TAG_SESSION_HELLO 0x90
+/* Client-to-server: NUL-terminated absolute repository root path. */
+#define TAG_CLIENT_REPOSITORY 0x91
 #define TAG_SESSION_HELLO_RESPONSE 0x50
 #define TAG_SESSION_ERROR 0xA0
 #define TAG_SESSION_CREATE 0x80

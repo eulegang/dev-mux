@@ -44,7 +44,7 @@ int run_client(client_opt_t options) {
   terminal_init();
   terminal_enter();
 
-  client_runtime_start(options.unix);
+  client_runtime_start(options.unix, repository_root);
 
   terminal_exit();
   free(repository_root);
