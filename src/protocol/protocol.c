@@ -58,18 +58,6 @@ void buffer_deinit(buffer *self) {
   }
 }
 
-ssize_t buffer_fill(buffer *self, int fd) {
-  ssize_t n = read(fd, self->buffer + self->len, self->cap - self->len);
-
-  if (n <= 0) {
-    return n;
-  }
-
-  self->len += n;
-
-  return n;
-}
-
 msg_tlv *buffer_message(buffer *self) {
   if (self->len < sizeof(msg_tlv)) {
     return NULL;
@@ -126,23 +114,14 @@ ssize_t buffer_push_data(buffer *self, const uint8_t *bytes, size_t len) {
 
   return 0;
 }
-ssize_t buffer_flush(buffer *self, int fd) {
-  const char *bytes = self->buffer;
-  size_t size = self->len;
 
-  while (size != 0) {
-    ssize_t written = write(fd, bytes, size);
-    if (written < 0 && errno == EINTR) {
-      continue;
-    }
-    if (written <= 0) {
-      return -1;
-    }
-    bytes += written;
-    size -= (size_t)written;
+ssize_t buffer_push_raw(buffer *self, const uint8_t *bytes, size_t len) {
+  if (self->len + len >= self->cap) {
+    return -1;
   }
 
-  self->len = 0;
+  memcpy(self->buffer + self->len, bytes, len);
+  self->len += len;
 
   return 0;
 }

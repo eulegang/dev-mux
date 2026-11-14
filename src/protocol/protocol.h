@@ -41,14 +41,7 @@ void buffer_deinit(buffer *);
 
 ssize_t buffer_push_msg(buffer *, uint16_t tag);
 ssize_t buffer_push_data(buffer *, const uint8_t *bytes, size_t len);
-ssize_t buffer_flush(buffer *, int fd);
+ssize_t buffer_push_raw(buffer *, const uint8_t *bytes, size_t len);
 
-ssize_t buffer_fill(buffer *, int);
 msg_tlv *buffer_message(buffer *);
 void buffer_chomp(buffer *);
-
-extern int socket_fd;
-extern char socket_path[PATH_MAX];
-int socket_connect(char *path);
-int socket_serve(char *path);
-void socket_deinit();

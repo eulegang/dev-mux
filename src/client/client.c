@@ -1,6 +1,5 @@
 #include "client.h"
 
-#include "../protocol/protocol.h"
 #include "terminal.h"
 
 #include <errno.h>
@@ -14,45 +13,14 @@
 #include <syslog.h>
 #include <unistd.h>
 
-typedef enum {
-  PHASE_INIT,
-  PHASE_LOG,
-  PHASE_SOCKET,
-  PHASE_TERMINAL,
-} PHASE;
-
-static PHASE client_phase = PHASE_INIT;
-
-static void client_cleanup(void) {
-  switch (client_phase) {
-  case PHASE_TERMINAL:
-    terminal_exit();
-
-  case PHASE_SOCKET:
-    socket_deinit();
-
-  case PHASE_LOG:
-    closelog();
-
-  case PHASE_INIT:
-    break;
-  }
-}
-
-char client_unix_path[PATH_MAX];
-int run_client(client_opt_t options) {
-  atexit(client_cleanup);
-
+int run_client(client_opt_t) {
   openlog("dev-mux-cli", LOG_PID | LOG_NDELAY, LOG_USER);
-  client_phase = PHASE_LOG;
 
   assert_termial();
-  socket_connect(options.unix);
-  client_phase = PHASE_SOCKET;
   terminal_init();
   terminal_enter();
-  client_phase = PHASE_TERMINAL;
-  int result = EXIT_FAILURE;
 
-  return result;
+  terminal_exit();
+
+  return 0;
 }

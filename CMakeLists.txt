@@ -4,6 +4,7 @@ project(dev-mux VERSION 0.1.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBUV REQUIRED IMPORTED_TARGET libuv)
@@ -15,7 +16,6 @@ add_executable(
 	src/cli.c
 
 	src/protocol/protocol.c
-	src/protocol/network.c
 
 	src/server/server.c
 	src/server/runtime.c

@@ -1,132 +1,145 @@
 #include "runtime.h"
+
+#include <assert.h>
+#include <stdlib.h>
+#include <syslog.h>
+#include <uv.h>
+
+#include "../protocol/protocol.h"
 #include "handle.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/event.h>
-#include <sys/socket.h>
-#include <syslog.h>
-#include <unistd.h>
+typedef struct {
+  buffer *input;
+  buffer *output;
+  server_handle *handle;
+  uv_write_t *req;
+} server_conn;
 
-static int server_queue = -1;
+#define GET_CONN(s) ((server_conn *)(s)->data)
 
-struct runtime_handler {
-  int fd;
-  void (*handle)(struct runtime_handler *, struct kevent event);
-  void *udata;
-};
-
-static void server_runtime_client_handler(struct runtime_handler *handler,
-                                          struct kevent event) {
-  (void)event;
-  server_handle *handle = handler->udata;
-
-  server_handle_read(handle);
+static void server_alloc_buffer(uv_handle_t *handle, size_t suggested,
+                                uv_buf_t *buf) {
+  (void)handle;
+  buf->base = malloc(suggested);
+  buf->len = buf->base ? suggested : 0;
 }
 
-static void server_runtime_listener_handler(struct runtime_handler *handler,
-                                            struct kevent event) {
-  (void)event;
+static void server_conn_on_close(uv_handle_t *handle) {
+  auto conn = GET_CONN(handle);
 
-  int fd = accept(handler->fd, NULL, NULL);
-  if (fd == -1)
+  buffer_deinit(conn->input);
+  server_handle_deinit(conn->handle);
+  free(conn);
+  free(handle);
+}
+
+static void server_conn_on_write(uv_write_t *write, int status) {
+  if (status < 0) {
+    uv_close((uv_handle_t *)write->handle, server_conn_on_close);
+  }
+
+  auto conn = GET_CONN(write);
+
+  auto handle = write->handle;
+
+  msg_tlv *msg = buffer_message(conn->output);
+  if (msg) {
+    free(conn->req);
+    conn->req = malloc(sizeof(uv_write_t));
+    conn->req->data = conn;
+    uv_buf_t bufs[] = {
+        {.base = (char *)msg, .len = sizeof(msg_tlv) + msg->len}};
+
+    uv_write(conn->req, handle, bufs, 1, server_conn_on_write);
+  }
+}
+
+static void server_conn_on_read(uv_stream_t *stream, ssize_t nread,
+                                const uv_buf_t *buf) {
+  server_conn *conn = (server_conn *)stream->data;
+  if (nread > 0) {
+    buffer_push_raw(conn->input, (const uint8_t *)buf->base, buf->len);
+  }
+
+  if (buf) {
+    free(buf->base);
+  }
+
+  msg_tlv *msg = buffer_message(conn->input);
+  while (msg) {
+    server_handle_process(conn->handle, msg, conn->output);
+    msg = buffer_message(conn->input);
+  }
+
+  msg = buffer_message(conn->output);
+  if (msg) {
+    conn->req = malloc(sizeof(uv_write_t));
+    conn->req->data = conn;
+    uv_buf_t bufs[] = {
+        {.base = (char *)msg, .len = sizeof(msg_tlv) + msg->len}};
+
+    uv_write(conn->req, stream, bufs, 1, server_conn_on_write);
+  }
+
+  if (nread < 0) {
+    if (nread == UV_EOF) {
+      syslog(LOG_INFO, "client disconnected");
+    } else {
+      syslog(LOG_INFO, "connection read error: %s", uv_strerror((int)nread));
+    }
+
+    uv_close((uv_handle_t *)stream, server_conn_on_close);
+  }
+}
+
+// TODO: handle failures in this function
+static void server_connect(uv_stream_t *server, int status) {
+  if (status < 0)
     return;
 
-  struct runtime_handler *client_handler =
-      malloc(sizeof(struct runtime_handler));
+  uv_pipe_t *peer = malloc(sizeof(*peer));
+  if (!peer)
+    return;
 
-  if (!client_handler) {
-    goto free_handler;
-  }
+  buffer *buffer = buffer_init(4096);
+  server_handle *handle = server_handle_init();
 
-  client_handler->fd = fd;
-  client_handler->handle = server_runtime_client_handler;
-  client_handler->udata = server_handle_init(fd);
+  server_conn *conn = malloc(sizeof(server_conn));
 
-  if (!client_handler->udata) {
-    goto free_handle;
-  }
+  assert(buffer);
+  assert(handle);
+  assert(conn);
 
-  struct kevent change;
-  EV_SET(&change, fd, EVFILT_READ, EV_ADD, 0, 0, client_handler);
+  conn->input = buffer;
+  conn->handle = handle;
+  peer->data = conn;
 
-  if (kevent(server_queue, &change, 1, NULL, 0, NULL) < 0) {
-    goto free_handle;
-  }
+  uv_pipe_init(server->loop, peer, 0);
 
-  return;
-
-free_handle:
-  server_handle_deinit(client_handler->udata);
-
-free_handler:
-  free(client_handler);
-
-  syslog(LOG_ERR, "failed to setup client handler");
-  close(fd);
-}
-
-int server_runtime_init(int listener) {
-  server_queue = kqueue();
-
-  if (server_queue == -1) {
-    syslog(LOG_ERR, "failed to listen to event queue: %m");
-    return -1;
-  }
-
-  struct runtime_handler *handler = malloc(sizeof(struct runtime_handler));
-  if (!handler) {
-    syslog(LOG_ERR, "failed to allocate listener runtime handler");
-    return -1;
-  }
-
-  handler->fd = listener;
-  handler->handle = server_runtime_listener_handler;
-  handler->udata = NULL;
-
-  struct kevent changes[3];
-  EV_SET(&changes[0], listener, EVFILT_READ, EV_ADD, 0, 0, handler);
-  EV_SET(&changes[1], SIGTERM, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
-  EV_SET(&changes[2], SIGINT, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
-
-  if (kevent(server_queue, changes, 3, NULL, 0, NULL) < 0) {
-    syslog(LOG_ERR, "failed to setup listener: %m");
-    return -1;
-  }
-
-  return 0;
-}
-
-void server_runtime_run() {
-  while (1) {
-    struct kevent event;
-
-    int n = kevent(server_queue, NULL, 0, &event, 1, NULL);
-
-    if (n < 0) {
-      syslog(LOG_ERR, "failed to wait on queue: %m");
-      return;
-    }
-
-    if (n != 1) {
-      continue;
-    }
-
-    if (event.filter == EVFILT_SIGNAL) {
-      if (event.ident == SIGTERM || event.ident == SIGINT) {
-        syslog(LOG_INFO, "gracefully shuting down");
-        return;
-      }
-
-    } else if (event.filter == EVFILT_READ && event.udata) {
-      struct runtime_handler *handler = event.udata;
-      handler->handle(handler, event);
-    }
+  if (uv_accept(server, (uv_stream_t *)peer) == 0) {
+    uv_read_start((uv_stream_t *)peer, server_alloc_buffer,
+                  server_conn_on_read);
+  } else {
+    uv_close((uv_handle_t *)peer, server_conn_on_close);
   }
 }
 
-void server_runtime_deinit() {
-  if (server_queue != -1) {
-    close(server_queue);
+void server_runtime_start(char *path) {
+  uv_pipe_t server;
+  int err;
+
+  if ((err = uv_pipe_init(uv_default_loop(), &server, 0))) {
+    syslog(LOG_ERR, "failed to initialize socket: %s", uv_strerror(err));
+    exit(EXIT_FAILURE);
   }
+
+  err = uv_pipe_bind(&server, path);
+  if (err) {
+    syslog(LOG_ERR, "failed to bind unix path: %s", uv_strerror(err));
+    exit(EXIT_FAILURE);
+  }
+
+  err = uv_listen((uv_stream_t *)&server, 16, server_connect);
+
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 }
