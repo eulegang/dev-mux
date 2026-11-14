@@ -9,7 +9,6 @@
 
 #include "../protocol/protocol.h"
 #include "handle.h"
-#include "signals.h"
 
 typedef struct {
   buffer *input;
@@ -20,6 +19,7 @@ typedef struct {
 } server_conn;
 
 #define GET_CONN(s) ((server_conn *)(s)->data)
+#define SERVER_SIGNAL_COUNT 3
 
 static void server_alloc_buffer(uv_handle_t *handle, size_t suggested,
                                 uv_buf_t *buf) {
@@ -140,22 +140,68 @@ static void server_connect(uv_stream_t *server, int status) {
   }
 }
 
-void server_runtime_start(char *path) {
+static void server_close_handle(uv_handle_t *handle, void *arg) {
+  if (uv_is_closing(handle))
+    return;
+
+  (void)arg;
+  uv_close(handle, handle->type == UV_NAMED_PIPE && handle->data
+                       ? server_conn_on_close
+                       : NULL);
+}
+
+static void server_on_signal(uv_signal_t *signal, int signo) {
+  syslog(LOG_INFO, "server stopping on signal %d", signo);
+  uv_walk(signal->loop, server_close_handle, NULL);
+}
+
+int server_runtime_start(char *path) {
+  uv_loop_t *loop = uv_default_loop();
   uv_pipe_t server;
+  uv_signal_t signals[SERVER_SIGNAL_COUNT];
   int err;
 
-  if ((err = uv_pipe_init(uv_default_loop(), &server, 0))) {
+  if ((err = uv_pipe_init(loop, &server, 0))) {
     syslog(LOG_ERR, "failed to initialize socket: %s", uv_strerror(err));
-    exit(EXIT_FAILURE);
+    goto fail;
   }
 
-  err = uv_pipe_bind(&server, path);
-  if (err) {
+  if ((err = uv_pipe_bind(&server, path))) {
     syslog(LOG_ERR, "failed to bind unix path: %s", uv_strerror(err));
-    exit(EXIT_FAILURE);
+    goto fail;
   }
 
-  err = uv_listen((uv_stream_t *)&server, 16, server_connect);
+  if ((err = uv_listen((uv_stream_t *)&server, 16, server_connect))) {
+    syslog(LOG_ERR, "failed to listen: %s", uv_strerror(err));
+    goto fail;
+  }
 
-  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  const int numbers[SERVER_SIGNAL_COUNT] = {SIGINT, SIGTERM, SIGHUP};
+  for (int i = 0; i < SERVER_SIGNAL_COUNT; ++i) {
+    if ((err = uv_signal_init(loop, &signals[i]))) {
+      syslog(LOG_ERR, "failed to initialize signal handler: %s",
+             uv_strerror(err));
+      return -1;
+    }
+
+    if ((err = uv_signal_start(&signals[i], server_on_signal, numbers[i]))) {
+      syslog(LOG_ERR, "failed to watch signal: %s", uv_strerror(err));
+      uv_close((uv_handle_t *)&signals[i], NULL);
+      return -1;
+    }
+  }
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  // libuv may already have removed the socket when closing the listener.
+  if (unlink(path) < 0 && errno != ENOENT) {
+    syslog(LOG_ERR, "failed to remove socket %s: %m", path);
+    err = UV_EIO;
+  }
+  return err ? EXIT_FAILURE : EXIT_SUCCESS;
+
+fail:
+  uv_walk(loop, server_close_handle, NULL);
+
+  return EXIT_FAILURE;
 }

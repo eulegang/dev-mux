@@ -20,9 +20,9 @@ int run_server(server_opt_t options) {
   }
 
   syslog(LOG_INFO, "server starting on %s", options.unix);
-  server_runtime_start(options.unix);
+  int status = server_runtime_start(options.unix);
 
   closelog();
 
-  return 0;
+  return status;
 }
