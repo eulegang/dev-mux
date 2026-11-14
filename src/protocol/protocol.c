@@ -125,3 +125,7 @@ ssize_t buffer_push_raw(buffer *self, const uint8_t *bytes, size_t len) {
 
   return 0;
 }
+
+uv_buf_t buffer_uv(buffer *self) {
+  return (uv_buf_t){.base = self->buffer, .len = self->len};
+}

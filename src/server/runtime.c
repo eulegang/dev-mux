@@ -85,7 +85,7 @@ static void server_conn_on_read(uv_stream_t *stream, ssize_t nread,
     if (nread == UV_EOF) {
       syslog(LOG_INFO, "client disconnected");
     } else {
-      syslog(LOG_INFO, "connection read error: %s", uv_strerror((int)nread));
+      syslog(LOG_ERR, "connection read error: %s", uv_strerror((int)nread));
     }
 
     uv_close((uv_handle_t *)stream, server_conn_on_close);
@@ -101,16 +101,21 @@ static void server_connect(uv_stream_t *server, int status) {
   if (!peer)
     return;
 
-  buffer *buffer = buffer_init(4096);
+  syslog(LOG_INFO, "client connected");
+
+  buffer *input = buffer_init(4096);
+  buffer *output = buffer_init(4096);
   server_handle *handle = server_handle_init();
 
   server_conn *conn = malloc(sizeof(server_conn));
 
-  assert(buffer);
+  assert(input);
+  assert(output);
   assert(handle);
   assert(conn);
 
-  conn->input = buffer;
+  conn->input = input;
+  conn->output = output;
   conn->handle = handle;
   peer->data = conn;
 

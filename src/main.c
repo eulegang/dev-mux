@@ -12,14 +12,14 @@ int main(int argc, char **argv) {
   } else {
     if (strcmp(argv[1], "server") == 0) {
       server_opt_t options;
-      if (parse_server_options(&options, argc - 2, argv + 2) != 0) {
+      if (parse_server_options(&options, argc - 1, argv + 1) != 0) {
         return 1;
       }
 
       return run_server(options);
     } else if (strcmp(argv[1], "attach") == 0) {
       client_opt_t options;
-      if (parse_client_options(&options, argc - 2, argv + 2) != 0) {
+      if (parse_client_options(&options, argc - 1, argv + 1) != 0) {
         return 1;
       }
 

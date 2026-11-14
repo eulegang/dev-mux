@@ -24,7 +24,7 @@ add_executable(
 
 	src/client/client.c
 	src/client/terminal.c
-	src/client/signals.c
+	src/client/runtime.c
 )
 
 target_link_libraries(dev-mux PRIVATE PkgConfig::LIBUV)
