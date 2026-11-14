@@ -65,8 +65,9 @@ static void server_conn_on_write(uv_write_t *write, int status) {
 static void server_conn_on_read(uv_stream_t *stream, ssize_t nread,
                                 const uv_buf_t *buf) {
   server_conn *conn = (server_conn *)stream->data;
+  syslog(LOG_INFO, "completed a read");
   if (nread > 0) {
-    buffer_push_raw(conn->input, (const uint8_t *)buf->base, (size_t)nread);
+    buffer_push_raw(conn->input, buf->base, (size_t)nread);
   }
 
   if (buf) {
@@ -78,6 +79,7 @@ static void server_conn_on_read(uv_stream_t *stream, ssize_t nread,
 
   msg_tlv *msg = buffer_message(conn->input);
   while (msg) {
+    syslog(LOG_INFO, "recieved message: %#02x", msg->tag);
     server_handle_process(conn->handle, msg, conn->output);
     msg = buffer_message(conn->input);
   }

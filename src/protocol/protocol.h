@@ -43,8 +43,8 @@ buffer *buffer_init(uint16_t cap);
 void buffer_deinit(buffer *);
 
 ssize_t buffer_push_msg(buffer *, uint16_t tag);
-ssize_t buffer_push_data(buffer *, const uint8_t *bytes, size_t len);
-ssize_t buffer_push_raw(buffer *, const uint8_t *bytes, size_t len);
+ssize_t buffer_push_data(buffer *, const char *bytes, size_t len);
+ssize_t buffer_push_raw(buffer *, const char *bytes, size_t len);
 uv_buf_t buffer_uv(buffer *);
 
 msg_tlv *buffer_message(buffer *);

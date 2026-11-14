@@ -81,7 +81,7 @@ ssize_t buffer_push_msg(buffer *self, uint16_t tag) {
   return 0;
 }
 
-ssize_t buffer_push_data(buffer *self, const uint8_t *bytes, size_t len) {
+ssize_t buffer_push_data(buffer *self, const char *bytes, size_t len) {
   if (self->last_msg == 0xFFFF) {
     return -1;
   }
@@ -99,7 +99,7 @@ ssize_t buffer_push_data(buffer *self, const uint8_t *bytes, size_t len) {
   return 0;
 }
 
-ssize_t buffer_push_raw(buffer *self, const uint8_t *bytes, size_t len) {
+ssize_t buffer_push_raw(buffer *self, const char *bytes, size_t len) {
   if (self->len + len >= self->cap) {
     return -1;
   }

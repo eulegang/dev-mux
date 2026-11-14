@@ -3,6 +3,7 @@
 #include "runtime.h"
 #include "terminal.h"
 #include <git2.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
@@ -37,16 +38,22 @@ char *client_repository_root(void) {
 }
 
 int run_client(client_opt_t options) {
-  openlog("dev-mux-cli", LOG_PID | LOG_NDELAY, LOG_USER);
-
+  openlog("dev-mux-cli", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_USER);
   char *repository_root = client_repository_root();
-  assert_termial();
-  terminal_init();
-  terminal_enter();
+
+  if (!repository_root) {
+    fprintf(stderr, "trying to attach without a repository\n");
+    syslog(LOG_ERR, "trying to attach without a repository");
+    exit(EXIT_FAILURE);
+  }
+
+  // assert_termial();
+  // terminal_init();
+  // terminal_enter();
 
   client_runtime_start(options.unix, repository_root);
-
-  terminal_exit();
+  //
+  // terminal_exit();
   free(repository_root);
   closelog();
 

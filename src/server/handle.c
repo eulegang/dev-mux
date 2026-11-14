@@ -32,7 +32,7 @@ static ssize_t server_handle_send_err(buffer *out, const char *msg) {
   if (res < 0)
     return res;
 
-  res = buffer_push_data(out, (const uint8_t *)msg, strlen(msg) + 1);
+  res = buffer_push_data(out, msg, strlen(msg) + 1);
 
   if (res < 0)
     return res;
