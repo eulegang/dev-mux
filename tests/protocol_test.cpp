@@ -18,7 +18,7 @@ BufferPtr make_buffer(uint16_t capacity) {
 }
 
 class ScopedEnv {
- public:
+public:
   ScopedEnv(const char *name, const char *value) : name_(name) {
     const char *old = std::getenv(name);
     if (old) {
@@ -38,18 +38,18 @@ class ScopedEnv {
       unsetenv(name_);
   }
 
- private:
+private:
   const char *name_;
   std::string old_value_;
   bool had_value_ = false;
 };
-}  // namespace
+} // namespace
 
 TEST(ProtocolBuffer, CompleteMessageAndChomp) {
   auto buf = make_buffer(32);
   ASSERT_NE(buf, nullptr);
   EXPECT_EQ(buffer_push_msg(buf.get(), TAG_SESSION_HELLO), 0);
-  const char payload[] = "repo";
+  const char payload[] = "repo\0";
   EXPECT_EQ(buffer_push_data(buf.get(), payload, sizeof(payload)), 0);
 
   auto *msg = buffer_message(buf.get());
@@ -70,7 +70,8 @@ TEST(ProtocolBuffer, PartialReadWaitsForFullMessage) {
   ASSERT_NE(buf, nullptr);
   const msg_tlv header = {TAG_SESSION_HELLO, 3};
   ASSERT_EQ(buffer_push_raw(buf.get(), reinterpret_cast<const char *>(&header),
-                            sizeof(header)), 0);
+                            sizeof(header)),
+            0);
   EXPECT_EQ(buffer_message(buf.get()), nullptr);
   ASSERT_EQ(buffer_push_raw(buf.get(), "ab", 2), 0);
   EXPECT_EQ(buffer_message(buf.get()), nullptr);
@@ -116,8 +117,8 @@ TEST(SocketPath, PrefersRuntimeDirectory) {
   ScopedEnv home("HOME", "/tmp/mux-home");
   char path[128];
   ASSERT_EQ(session_socket_path(path, sizeof(path)), 0);
-  EXPECT_EQ(std::string(path), "/tmp/mux-runtime/dev-mux-" +
-                                   std::to_string(getuid()) + ".sock");
+  EXPECT_EQ(std::string(path),
+            "/tmp/mux-runtime/dev-mux-" + std::to_string(getuid()) + ".sock");
   EXPECT_EQ(session_socket_path(path, 3), -1);
 }
 

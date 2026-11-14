@@ -27,7 +27,11 @@ buffer *buffer_init(uint16_t cap) {
   if (!buffer)
     return NULL;
 
-  buffer->buffer = malloc(cap);
+  if (!(buffer->buffer = malloc(cap))) {
+    free(buffer);
+    return NULL;
+  }
+
   buffer->cap = cap;
   buffer->len = 0;
   buffer->last_msg = 0xffff;
@@ -49,7 +53,7 @@ msg_tlv *buffer_message(buffer *self) {
 
   msg_tlv *msg = (msg_tlv *)self->buffer;
 
-  if (msg->len < self->len + sizeof(msg_tlv)) {
+  if (msg->len + sizeof(msg_tlv) < self->len) {
     return NULL;
   }
 
@@ -59,10 +63,16 @@ msg_tlv *buffer_message(buffer *self) {
 void buffer_chomp(buffer *self) {
   msg_tlv *msg = buffer_message(self);
   if (msg) {
-    uint16_t len = msg->len;
+    uint16_t len = msg->len + sizeof(msg_tlv);
 
     memcpy(self->buffer, self->buffer + len, len);
     self->len -= len;
+
+    if (self->last_msg == 0) {
+      self->last_msg = 0xFFFF;
+    } else {
+      self->last_msg -= len;
+    }
   }
 }
 
@@ -77,6 +87,7 @@ ssize_t buffer_push_msg(buffer *self, uint16_t tag) {
 
   msg->tag = tag;
   msg->len = 0;
+  self->len += sizeof(msg_tlv);
 
   return 0;
 }
