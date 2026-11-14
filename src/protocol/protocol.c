@@ -53,7 +53,7 @@ msg_tlv *buffer_message(buffer *self) {
 
   msg_tlv *msg = (msg_tlv *)self->buffer;
 
-  if (msg->len + sizeof(msg_tlv) < self->len) {
+  if (msg->len + sizeof(msg_tlv) > self->len) {
     return NULL;
   }
 
@@ -65,7 +65,7 @@ void buffer_chomp(buffer *self) {
   if (msg) {
     uint16_t len = msg->len + sizeof(msg_tlv);
 
-    memcpy(self->buffer, self->buffer + len, len);
+    memcpy(self->buffer, self->buffer + len, self->len - len);
     self->len -= len;
 
     if (self->last_msg == 0) {

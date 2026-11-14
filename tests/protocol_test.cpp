@@ -84,16 +84,16 @@ TEST(ProtocolBuffer, ChompPreservesFollowingMessage) {
   auto buf = make_buffer(32);
   ASSERT_NE(buf, nullptr);
   ASSERT_EQ(buffer_push_msg(buf.get(), TAG_SESSION_HELLO), 0);
-  ASSERT_EQ(buffer_push_data(buf.get(), "a", 1), 0);
+  ASSERT_EQ(buffer_push_data(buf.get(), "a\0", 2), 0);
   ASSERT_EQ(buffer_push_msg(buf.get(), TAG_SESSION_ERROR), 0);
-  ASSERT_EQ(buffer_push_data(buf.get(), "bc", 2), 0);
+  ASSERT_EQ(buffer_push_data(buf.get(), "bc\0", 3), 0);
 
   buffer_chomp(buf.get());
   auto *msg = buffer_message(buf.get());
   ASSERT_NE(msg, nullptr);
   EXPECT_EQ(msg->tag, TAG_SESSION_ERROR);
-  EXPECT_EQ(msg->len, 2);
-  EXPECT_EQ(std::memcmp(msg->bytes, "bc", 2), 0);
+  EXPECT_EQ(msg->len, 3);
+  EXPECT_EQ(std::memcmp(msg->bytes, "bc\0", 3), 0);
   buffer_chomp(buf.get());
   EXPECT_EQ(buf->len, 0);
 }
