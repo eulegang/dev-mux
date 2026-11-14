@@ -20,6 +20,8 @@ typedef struct msg_tlv {
   uint8_t bytes[];
 } msg_tlv;
 
+#define TAG_SESSION_DECLARE 0x90
+
 #define TAG_SESSION_HELLO 0x90
 /* Client-to-server: NUL-terminated absolute repository root path. */
 #define TAG_CLIENT_REPOSITORY 0x91
@@ -29,8 +31,6 @@ typedef struct msg_tlv {
 #define TAG_SESSION_CREATE_RESPONSE 0x40
 
 int session_socket_path(char *buffer, size_t capacity);
-
-int write_all(int fd, const void *data, size_t size);
 
 typedef struct buffer {
   uint16_t len;

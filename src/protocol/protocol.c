@@ -22,22 +22,6 @@ int session_socket_path(char *buffer, size_t capacity) {
   return length >= 0 && (size_t)length < capacity ? 0 : -1;
 }
 
-int write_all(int fd, const void *data, size_t size) {
-  const unsigned char *bytes = data;
-  while (size != 0) {
-    ssize_t written = write(fd, bytes, size);
-    if (written < 0 && errno == EINTR) {
-      continue;
-    }
-    if (written <= 0) {
-      return -1;
-    }
-    bytes += written;
-    size -= (size_t)written;
-  }
-  return 0;
-}
-
 buffer *buffer_init(uint16_t cap) {
   buffer *buffer = malloc(sizeof(struct buffer));
   if (!buffer)

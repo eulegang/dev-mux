@@ -1,10 +1,10 @@
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
 
-#include "../protocol/protocol.h"
 #include "terminal.h"
 
 struct winsize term_size;
@@ -13,6 +13,22 @@ static struct termios entered_term;
 
 static bool term_is_raw = false;
 static bool term_is_alt = false;
+
+static int write_all(int fd, const void *data, size_t size) {
+  const unsigned char *bytes = data;
+  while (size != 0) {
+    ssize_t written = write(fd, bytes, size);
+    if (written < 0 && errno == EINTR) {
+      continue;
+    }
+    if (written <= 0) {
+      return -1;
+    }
+    bytes += written;
+    size -= (size_t)written;
+  }
+  return 0;
+}
 
 void assert_termial() {
   if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) {
