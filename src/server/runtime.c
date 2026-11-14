@@ -12,7 +12,8 @@ typedef struct {
   buffer *input;
   buffer *output;
   server_handle *handle;
-  uv_write_t *req;
+  uv_write_t ww_req;
+  uv_write_t rw_req;
 } server_conn;
 
 #define GET_CONN(s) ((server_conn *)(s)->data)
@@ -44,13 +45,11 @@ static void server_conn_on_write(uv_write_t *write, int status) {
 
   msg_tlv *msg = buffer_message(conn->output);
   if (msg) {
-    free(conn->req);
-    conn->req = malloc(sizeof(uv_write_t));
-    conn->req->data = conn;
+    conn->ww_req.data = conn;
     uv_buf_t bufs[] = {
         {.base = (char *)msg, .len = sizeof(msg_tlv) + msg->len}};
 
-    uv_write(conn->req, handle, bufs, 1, server_conn_on_write);
+    uv_write(&conn->ww_req, handle, bufs, 1, server_conn_on_write);
   }
 }
 
@@ -73,12 +72,11 @@ static void server_conn_on_read(uv_stream_t *stream, ssize_t nread,
 
   msg = buffer_message(conn->output);
   if (msg) {
-    conn->req = malloc(sizeof(uv_write_t));
-    conn->req->data = conn;
+    conn->rw_req.data = conn;
     uv_buf_t bufs[] = {
         {.base = (char *)msg, .len = sizeof(msg_tlv) + msg->len}};
 
-    uv_write(conn->req, stream, bufs, 1, server_conn_on_write);
+    uv_write(&conn->rw_req, stream, bufs, 1, server_conn_on_write);
   }
 
   if (nread < 0) {
