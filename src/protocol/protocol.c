@@ -97,7 +97,7 @@ ssize_t buffer_push_data(buffer *self, const char *bytes, size_t len) {
     return -1;
   }
 
-  if (self->len + len >= self->cap) {
+  if (self->len + len > self->cap) {
     return -1;
   }
 
