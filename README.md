@@ -4,11 +4,13 @@ An early terminal multiplexer prototype in C.
 
 ## Build
 
-Install `libuv`, `libgit2`, and `pkg-config` before building.
+Install `libuv`, `libgit2`, `pkg-config`, and GoogleTest before building.
+Pass `-DBUILD_TESTING=OFF` to CMake if you only want the application.
 
 ```sh
 cmake -S . -B build
 cmake --build build
+ctest --test-dir build --output-on-failure
 ```
 
 ## Run
