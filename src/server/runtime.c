@@ -1,12 +1,15 @@
 #include "runtime.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <syslog.h>
+#include <unistd.h>
 #include <uv.h>
 
 #include "../protocol/protocol.h"
 #include "handle.h"
+#include "signals.h"
 
 typedef struct {
   buffer *input;
@@ -29,6 +32,7 @@ static void server_conn_on_close(uv_handle_t *handle) {
   auto conn = GET_CONN(handle);
 
   buffer_deinit(conn->input);
+  buffer_deinit(conn->output);
   server_handle_deinit(conn->handle);
   free(conn);
   free(handle);
@@ -36,8 +40,13 @@ static void server_conn_on_close(uv_handle_t *handle) {
 
 static void server_conn_on_write(uv_write_t *write, int status) {
   if (status < 0) {
-    uv_close((uv_handle_t *)write->handle, server_conn_on_close);
+    if (!uv_is_closing((uv_handle_t *)write->handle))
+      uv_close((uv_handle_t *)write->handle, server_conn_on_close);
+    return;
   }
+
+  if (uv_is_closing((uv_handle_t *)write->handle))
+    return;
 
   auto conn = GET_CONN(write);
 
@@ -57,12 +66,15 @@ static void server_conn_on_read(uv_stream_t *stream, ssize_t nread,
                                 const uv_buf_t *buf) {
   server_conn *conn = (server_conn *)stream->data;
   if (nread > 0) {
-    buffer_push_raw(conn->input, (const uint8_t *)buf->base, buf->len);
+    buffer_push_raw(conn->input, (const uint8_t *)buf->base, (size_t)nread);
   }
 
   if (buf) {
     free(buf->base);
   }
+
+  if (uv_is_closing((uv_handle_t *)stream))
+    return;
 
   msg_tlv *msg = buffer_message(conn->input);
   while (msg) {
@@ -86,7 +98,8 @@ static void server_conn_on_read(uv_stream_t *stream, ssize_t nread,
       syslog(LOG_ERR, "connection read error: %s", uv_strerror((int)nread));
     }
 
-    uv_close((uv_handle_t *)stream, server_conn_on_close);
+    if (!uv_is_closing((uv_handle_t *)stream))
+      uv_close((uv_handle_t *)stream, server_conn_on_close);
   }
 }
 
