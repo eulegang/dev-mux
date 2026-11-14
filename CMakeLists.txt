@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBUV REQUIRED IMPORTED_TARGET libuv)
+pkg_check_modules(LIBGIT2 REQUIRED IMPORTED_TARGET libgit2)
 
 add_executable(
 	dev-mux
@@ -26,7 +27,7 @@ add_executable(
 	src/client/runtime.c
 )
 
-target_link_libraries(dev-mux PRIVATE PkgConfig::LIBUV)
+target_link_libraries(dev-mux PRIVATE PkgConfig::LIBUV PkgConfig::LIBGIT2)
 
 if(APPLE)
     target_compile_definitions(dev-mux PRIVATE _DARWIN_C_SOURCE)

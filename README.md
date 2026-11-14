@@ -4,6 +4,8 @@ An early terminal multiplexer prototype in C.
 
 ## Build
 
+Install `libuv`, `libgit2`, and `pkg-config` before building.
+
 ```sh
 cmake -S . -B build
 cmake --build build
