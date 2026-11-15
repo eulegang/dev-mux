@@ -29,6 +29,7 @@ static void server_alloc_buffer(uv_handle_t *handle, size_t suggested,
 }
 
 static void server_conn_on_close(uv_handle_t *handle) {
+  syslog(LOG_INFO, "shutting down connection");
   auto conn = GET_CONN(handle);
 
   buffer_deinit(conn->input);
@@ -81,6 +82,7 @@ static void server_conn_on_read(uv_stream_t *stream, ssize_t nread,
   while (msg) {
     syslog(LOG_INFO, "recieved message: %#02x", msg->tag);
     server_handle_process(conn->handle, msg, conn->output);
+    buffer_chomp(conn->input);
     msg = buffer_message(conn->input);
   }
 
