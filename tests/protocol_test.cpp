@@ -48,13 +48,13 @@ private:
 TEST(ProtocolBuffer, CompleteMessageAndChomp) {
   auto buf = make_buffer(32);
   ASSERT_NE(buf, nullptr);
-  EXPECT_EQ(buffer_push_msg(buf.get(), TAG_SESSION_HELLO), 0);
+  EXPECT_EQ(buffer_push_msg(buf.get(), TAG_SESSION_JOIN), 0);
   const char payload[] = "repo\0";
   EXPECT_EQ(buffer_push_data(buf.get(), payload, sizeof(payload)), 0);
 
   auto *msg = buffer_message(buf.get());
   ASSERT_NE(msg, nullptr);
-  EXPECT_EQ(msg->tag, TAG_SESSION_HELLO);
+  EXPECT_EQ(msg->tag, TAG_SESSION_JOIN);
   EXPECT_EQ(msg->len, sizeof(payload));
   EXPECT_EQ(std::memcmp(msg->bytes, payload, sizeof(payload)), 0);
   EXPECT_EQ(buffer_uv(buf.get()).len, sizeof(msg_tlv) + sizeof(payload));
@@ -68,7 +68,7 @@ TEST(ProtocolBuffer, CompleteMessageAndChomp) {
 TEST(ProtocolBuffer, PartialReadWaitsForFullMessage) {
   auto buf = make_buffer(32);
   ASSERT_NE(buf, nullptr);
-  const msg_tlv header = {TAG_SESSION_HELLO, 3};
+  const msg_tlv header = {TAG_SESSION_JOIN, 3};
   ASSERT_EQ(buffer_push_raw(buf.get(), reinterpret_cast<const char *>(&header),
                             sizeof(header)),
             0);
@@ -83,7 +83,7 @@ TEST(ProtocolBuffer, PartialReadWaitsForFullMessage) {
 TEST(ProtocolBuffer, ChompPreservesFollowingMessage) {
   auto buf = make_buffer(32);
   ASSERT_NE(buf, nullptr);
-  ASSERT_EQ(buffer_push_msg(buf.get(), TAG_SESSION_HELLO), 0);
+  ASSERT_EQ(buffer_push_msg(buf.get(), TAG_SESSION_JOIN), 0);
   ASSERT_EQ(buffer_push_data(buf.get(), "a\0", 2), 0);
   ASSERT_EQ(buffer_push_msg(buf.get(), TAG_SESSION_ERROR), 0);
   ASSERT_EQ(buffer_push_data(buf.get(), "bc\0", 3), 0);
@@ -102,7 +102,7 @@ TEST(ProtocolBuffer, CapacityFailuresDoNotModifyBuffer) {
   auto buf = make_buffer(sizeof(msg_tlv) + 2);
   ASSERT_NE(buf, nullptr);
   EXPECT_EQ(buffer_push_data(buf.get(), "x", 1), -1);
-  ASSERT_EQ(buffer_push_msg(buf.get(), TAG_SESSION_HELLO), 0);
+  ASSERT_EQ(buffer_push_msg(buf.get(), TAG_SESSION_JOIN), 0);
   ASSERT_EQ(buffer_push_data(buf.get(), "ab", 2), 0);
   EXPECT_EQ(buffer_push_data(buf.get(), "c", 1), -1);
   EXPECT_EQ(buffer_push_msg(buf.get(), TAG_SESSION_ERROR), -1);

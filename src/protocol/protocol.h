@@ -5,30 +5,18 @@
 #include <sys/types.h>
 #include <uv.h>
 
-/* Client-to-server stream: 'i' + one input byte, 'r' + four bytes
- * (rows and columns, big-endian), or 'd'/'q' without payload.
- * Server-to-client stream: raw PTY output.
- */
-#define MSG_INPUT 'i'
-#define MSG_RESIZE 'r'
-#define MSG_DETACH 'd'
-#define MSG_QUIT 'q'
-
 typedef struct msg_tlv {
   uint16_t tag;
   uint16_t len;
   uint8_t bytes[];
 } msg_tlv;
 
-#define TAG_SESSION_DECLARE 0x90
+#define TAG_SESSION_JOIN 0x90
 
-#define TAG_SESSION_HELLO 0x90
-/* Client-to-server: NUL-terminated absolute repository root path. */
-#define TAG_CLIENT_REPOSITORY 0x91
 #define TAG_SESSION_HELLO_RESPONSE 0x50
+
 #define TAG_SESSION_ERROR 0xA0
-#define TAG_SESSION_CREATE 0x80
-#define TAG_SESSION_CREATE_RESPONSE 0x40
+#define TAG_SESSION_OK 0xA0
 
 int session_socket_path(char *buffer, size_t capacity);
 

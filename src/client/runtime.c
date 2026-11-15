@@ -98,7 +98,7 @@ static void client_on_connect(uv_connect_t *conn, int status) {
   }
 
   syslog(LOG_INFO, "Pushing declare message");
-  buffer_push_msg(conn_out, TAG_SESSION_DECLARE);
+  buffer_push_msg(conn_out, TAG_SESSION_JOIN);
   buffer_push_data(conn_out, git_path, strlen(git_path) + 1);
 
   msg_tlv *msg = buffer_message(conn_out);

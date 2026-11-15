@@ -40,18 +40,19 @@ static ssize_t server_handle_send_err(buffer *out, const char *msg) {
   return 0;
 }
 
-bool server_handle_process(server_handle *self, msg_tlv *msg, buffer *out) {
+bool server_handle_process(server_handle *, msg_tlv *msg, buffer *out) {
   syslog(LOG_INFO, "Handling a message: %d", msg->tag);
 
-  if (self->session == SESSION_UNINIT) {
-    if (msg->tag == TAG_SESSION_HELLO) {
-      self->session = SESSION_INIT;
+  switch (msg->tag) {
+  case TAG_SESSION_JOIN: {
+    buffer_push_msg(out, TAG_SESSION_OK);
+  } break;
 
-      buffer_push_msg(out, TAG_SESSION_HELLO_RESPONSE);
-    } else {
-      server_handle_send_err(out, "improper init message sent");
-      return false;
-    }
+  default:
+    server_handle_send_err(out, "improper init message sent");
+    syslog(LOG_ERR, "found unhandled tag %#02x", msg->tag);
+    break;
   }
+
   return true;
 }
