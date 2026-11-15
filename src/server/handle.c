@@ -41,11 +41,17 @@ static ssize_t server_handle_send_err(buffer *out, const char *msg) {
 }
 
 bool server_handle_process(server_handle *, msg_tlv *msg, buffer *out) {
-  syslog(LOG_INFO, "Handling a message: %d", msg->tag);
+  syslog(LOG_INFO, "Handling a message: %#02x", msg->tag);
 
   switch (msg->tag) {
   case TAG_SESSION_JOIN: {
     buffer_push_msg(out, TAG_SESSION_OK);
+  } break;
+
+  case TAG_SESSION_SENDKEYS: {
+    for (size_t i = 0; i < msg->len; i++) {
+      syslog(LOG_INFO, "key sent: %x", msg->bytes[i]);
+    }
   } break;
 
   default:

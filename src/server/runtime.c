@@ -51,6 +51,10 @@ static void server_conn_on_write(uv_write_t *write, int status) {
 
   auto conn = GET_CONN(write);
 
+  if (write == &conn->ww_req) {
+    buffer_chomp(conn->output);
+  }
+
   auto handle = write->handle;
 
   msg_tlv *msg = buffer_message(conn->output);
@@ -80,7 +84,6 @@ static void server_conn_on_read(uv_stream_t *stream, ssize_t nread,
 
   msg_tlv *msg = buffer_message(conn->input);
   while (msg) {
-    syslog(LOG_INFO, "recieved message: %#02x", msg->tag);
     server_handle_process(conn->handle, msg, conn->output);
     buffer_chomp(conn->input);
     msg = buffer_message(conn->input);

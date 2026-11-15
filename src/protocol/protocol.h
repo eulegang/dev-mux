@@ -12,8 +12,7 @@ typedef struct msg_tlv {
 } msg_tlv;
 
 #define TAG_SESSION_JOIN 0x90
-
-#define TAG_SESSION_HELLO_RESPONSE 0x50
+#define TAG_SESSION_SENDKEYS 0x91
 
 #define TAG_SESSION_ERROR 0xA0
 #define TAG_SESSION_OK 0xA0

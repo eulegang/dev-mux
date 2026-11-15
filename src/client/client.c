@@ -1,12 +1,12 @@
 #include "client.h"
 
 #include "runtime.h"
-#include "terminal.h"
 #include <git2.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
+#include <unistd.h>
 
 char *client_repository_root(void) {
   if (git_libgit2_init() < 0) {
@@ -47,6 +47,10 @@ int run_client(client_opt_t options) {
     exit(EXIT_FAILURE);
   }
 
+  if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) {
+    fprintf(stderr, "dev-mux: stdin and stdout must be terminals\n");
+    exit(EXIT_FAILURE);
+  }
   // assert_termial();
   // terminal_init();
   // terminal_enter();
