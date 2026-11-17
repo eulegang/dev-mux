@@ -1,5 +1,6 @@
 #include "client.h"
 
+#include "config.h"
 #include "runtime.h"
 #include <git2.h>
 #include <stdio.h>
@@ -7,6 +8,10 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
+
+static client_config *config;
+
+static void client_close_config(void) { client_config_close(config); }
 
 char *client_repository_root(void) {
   if (git_libgit2_init() < 0) {
@@ -39,6 +44,17 @@ char *client_repository_root(void) {
 
 int run_client(client_opt_t options) {
   openlog("dev-mux-cli", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_USER);
+  config = client_config_load();
+  if (!config) {
+    closelog();
+    return EXIT_FAILURE;
+  }
+  if (atexit(client_close_config) != 0) {
+    client_config_close(config);
+    closelog();
+    return EXIT_FAILURE;
+  }
+
   char *repository_root = client_repository_root();
 
   if (!repository_root) {
@@ -51,13 +67,9 @@ int run_client(client_opt_t options) {
     fprintf(stderr, "dev-mux: stdin and stdout must be terminals\n");
     exit(EXIT_FAILURE);
   }
-  // assert_termial();
-  // terminal_init();
-  // terminal_enter();
 
-  client_runtime_start(options.unix, repository_root);
-  //
-  // terminal_exit();
+  client_runtime_start(options.unix, repository_root, config);
+
   free(repository_root);
   closelog();
 

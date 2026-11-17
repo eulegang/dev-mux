@@ -1,6 +1,7 @@
 #include "runtime.h"
 
 #include "../protocol/protocol.h"
+#include "config.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -24,6 +25,17 @@ uv_tty_t term_out;
 uv_write_t term_write_phase;
 
 char TERM_READ_BUF[1024];
+static const client_config *runtime_config;
+static bool prefix_pending;
+
+static void client_close_handle(uv_handle_t *handle, void *) {
+  if (uv_is_closing(handle))
+    return;
+
+  if (handle->type == UV_NAMED_PIPE) {
+    uv_close(handle, NULL);
+  }
+}
 
 static void client_term_read_alloc_cb(uv_handle_t *, size_t suggested,
                                       uv_buf_t *buf) {
@@ -76,9 +88,6 @@ static void client_conn_on_read(uv_stream_t *stream, ssize_t nread,
 
   msg_tlv *msg = buffer_message(conn_in);
   while (msg) {
-    // syslog(LOG_INFO, "recieved message: %#02x", msg->tag);
-    // server_handle_process(stream->handle, msg, conn_out);
-
     buffer_chomp(conn_in);
     msg = buffer_message(conn_in);
   }
@@ -107,8 +116,37 @@ static void client_term_on_read(uv_stream_t *stream, ssize_t nread,
                                 const uv_buf_t *buf) {
 
   if (nread > 0) {
-    buffer_push_msg(conn_out, TAG_SESSION_SENDKEYS);
-    buffer_push_data(conn_out, buf->base, (size_t)nread);
+    char keys[sizeof(TERM_READ_BUF)];
+    size_t count = 0;
+
+    const char *it = buf->base;
+    size_t len = (size_t)nread;
+
+    while (len != 0) {
+      const char *cache = it;
+      bool forward =
+          client_config_process(runtime_config, &prefix_pending, &it, &len);
+
+      if (cache == it) {
+        syslog(LOG_ERR, "failed to advance when processing keystroke \"%.*s\"",
+               (int)buf->len, buf->base);
+
+        break;
+      }
+
+      if (forward) {
+        assert(it > cache);
+        size_t n = (size_t)(it - cache);
+        memcpy(keys + count, cache, n);
+
+        count += n;
+      }
+    }
+
+    if (count) {
+      buffer_push_msg(conn_out, TAG_SESSION_SENDKEYS);
+      buffer_push_data(conn_out, keys, count);
+    }
   }
 
   msg_tlv *msg = buffer_message(conn_out);
@@ -167,8 +205,11 @@ static void client_term_mode_reset() {
   write(1, leave, sizeof(leave) - 1);
 }
 
-void client_runtime_start(char *path, const char *repository_root) {
+void client_runtime_start(char *path, const char *repository_root,
+                          const client_config *config) {
   git_path = repository_root;
+  runtime_config = config;
+  prefix_pending = false;
   int err;
 
   conn_out = buffer_init(4096);
@@ -208,7 +249,8 @@ void client_runtime_start(char *path, const char *repository_root) {
   uv_pipe_connect(&client_conn_connect, &client_conn, path, client_on_connect);
 
   uv_buf_t bufs[] = {
-      {.base = "\x1b[?1049h\x1b[2J\x1b[H", .len = 5},
+      {.base = "\x1b[?1049h\x1b[2J\x1b[H",
+       .len = sizeof("\x1b[?1049h\x1b[2J\x1b[H") - 1},
   };
 
   uv_write(&term_write_phase, (uv_stream_t *)&term_out, bufs, 1, NULL);
@@ -217,4 +259,6 @@ void client_runtime_start(char *path, const char *repository_root) {
                 client_term_on_read);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  uv_walk(uv_default_loop(), client_close_handle, NULL);
 }

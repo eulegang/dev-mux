@@ -50,7 +50,12 @@ bool server_handle_process(server_handle *, msg_tlv *msg, buffer *out) {
 
   case TAG_SESSION_SENDKEYS: {
     for (size_t i = 0; i < msg->len; i++) {
-      syslog(LOG_INFO, "key sent: %x", msg->bytes[i]);
+      uint8_t ch = msg->bytes[i];
+      if (ch >= ' ' && ch <= '~') {
+        syslog(LOG_INFO, "key sent: %c", ch);
+      } else {
+        syslog(LOG_INFO, "key sent: %#02x", ch);
+      }
     }
   } break;
 
