@@ -22,7 +22,6 @@ add_executable(
 	src/server/server.c
 	src/server/runtime.c
 	src/server/handle.c
-	src/server/pty.c
 
 	src/client/client.c
 	src/client/config.c
