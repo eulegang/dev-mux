@@ -32,6 +32,7 @@ Attach from another terminal:
 The client reads `$XDG_CONFIG_HOME/dev-mux/config.lua` (or `~/.config/dev-mux/config.lua`) on attach.
 The default prefix is `Ctrl-Space`; to change it, set `mux.keymap.prefix = "C-b"` in the Lua file.
 A missing config file uses the default; an invalid config prevents the client from starting.
+Set `DEV_MUX_TRACE=1` to redirect client stderr (including syslog messages) to `$XDG_STATE_HOME/dev-mux/client-$PID.log`, or `~/.local/state/dev-mux/client-$PID.log` if `XDG_STATE_HOME` is unset.
 Press the prefix twice to send it literally. Unbound prefix keys pass through; `mux.keymap.pmap` can register prefix commands.
 Exiting the shell also stops the server.
 The client clears the alternate screen on attach and restores your original screen on exit.

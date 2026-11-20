@@ -2,14 +2,76 @@
 
 #include "config.h"
 #include "runtime.h"
+#include <errno.h>
+#include <fcntl.h>
 #include <git2.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <syslog.h>
 #include <unistd.h>
 
 static client_config *config;
+
+static int client_redirect_stderr(void) {
+  const char *base = getenv("XDG_STATE_HOME");
+  const char *suffix = "/dev-mux";
+  if (!base || !*base) {
+    base = getenv("HOME");
+    suffix = "/.local/state/dev-mux";
+  }
+  if (!base || !*base) {
+    fprintf(stderr, "dev-mux: XDG_STATE_HOME and HOME are unset\n");
+    return -1;
+  }
+
+  size_t dir_length = strlen(base) + strlen(suffix) + 1;
+  char *dir = malloc(dir_length);
+  if (!dir) {
+    perror("dev-mux: allocating state directory");
+    return -1;
+  }
+  snprintf(dir, dir_length, "%s%s", base, suffix);
+
+  for (char *part = dir + 1;; part++) {
+    if (*part != '/' && *part != '\0')
+      continue;
+    char saved = *part;
+    *part = '\0';
+    if (mkdir(dir, 0700) < 0 && errno != EEXIST) {
+      perror("dev-mux: creating state directory");
+      free(dir);
+      return -1;
+    }
+    *part = saved;
+    if (!saved)
+      break;
+  }
+
+  size_t length = dir_length + sizeof("/client-.log") +
+                  (size_t)snprintf(NULL, 0, "%ld", (long)getpid());
+  char *path = malloc(length);
+  if (!path) {
+    perror("dev-mux: allocating log path");
+    free(dir);
+    return -1;
+  }
+  snprintf(path, length, "%s/client-%ld.log", dir, (long)getpid());
+  free(dir);
+
+  int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0600);
+  if (fd < 0 || dup2(fd, STDERR_FILENO) < 0) {
+    perror(path);
+    if (fd >= 0)
+      close(fd);
+    free(path);
+    return -1;
+  }
+  close(fd);
+  free(path);
+  return 0;
+}
 
 static void client_close_config(void) { client_config_close(config); }
 
@@ -43,7 +105,15 @@ char *client_repository_root(void) {
 }
 
 int run_client(client_opt_t options) {
-  openlog("dev-mux-cli", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_USER);
+  int syslog_opts = LOG_PID | LOG_NDELAY;
+  const char *trace = getenv("DEV_MUX_TRACE");
+  if (trace && strcmp(trace, "1") == 0) {
+    syslog_opts |= LOG_PERROR;
+    if (client_redirect_stderr() != 0)
+      return EXIT_FAILURE;
+  }
+
+  openlog("dev-mux-cli", syslog_opts, LOG_USER);
   config = client_config_load();
   if (!config) {
     closelog();
