@@ -9,6 +9,7 @@
 
 #include "../protocol/protocol.h"
 #include "handle.h"
+#include "pty.h"
 
 typedef struct {
   buffer *input;
@@ -159,6 +160,7 @@ static void server_close_handle(uv_handle_t *handle, void *arg) {
 
 static void server_on_signal(uv_signal_t *signal, int signo) {
   syslog(LOG_INFO, "server stopping on signal %d", signo);
+  server_pty_stop();
   uv_walk(signal->loop, server_close_handle, NULL);
 }
 
@@ -167,6 +169,7 @@ int server_runtime_start(char *path) {
   uv_pipe_t server;
   uv_signal_t signals[SERVER_SIGNAL_COUNT];
   int err;
+  bool bound = false;
 
   if ((err = uv_pipe_init(loop, &server, 0))) {
     syslog(LOG_ERR, "failed to initialize socket: %s", uv_strerror(err));
@@ -178,8 +181,14 @@ int server_runtime_start(char *path) {
     goto fail;
   }
 
+  bound = true;
   if ((err = uv_listen((uv_stream_t *)&server, 16, server_connect))) {
     syslog(LOG_ERR, "failed to listen: %s", uv_strerror(err));
+    goto fail;
+  }
+
+  if ((err = server_pty_start(loop))) {
+    syslog(LOG_ERR, "failed to start PTY: %s", uv_strerror(err));
     goto fail;
   }
 
@@ -188,13 +197,13 @@ int server_runtime_start(char *path) {
     if ((err = uv_signal_init(loop, &signals[i]))) {
       syslog(LOG_ERR, "failed to initialize signal handler: %s",
              uv_strerror(err));
-      return -1;
+      goto fail;
     }
 
     if ((err = uv_signal_start(&signals[i], server_on_signal, numbers[i]))) {
       syslog(LOG_ERR, "failed to watch signal: %s", uv_strerror(err));
       uv_close((uv_handle_t *)&signals[i], NULL);
-      return -1;
+      goto fail;
     }
   }
 
@@ -208,7 +217,10 @@ int server_runtime_start(char *path) {
   return err ? EXIT_FAILURE : EXIT_SUCCESS;
 
 fail:
+  server_pty_stop();
   uv_walk(loop, server_close_handle, NULL);
-
+  uv_run(loop, UV_RUN_DEFAULT);
+  if (bound)
+    unlink(path);
   return EXIT_FAILURE;
 }
