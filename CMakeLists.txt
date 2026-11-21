@@ -6,6 +6,10 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+add_compile_options(
+    "$<$<COMPILE_LANGUAGE:C,CXX>:SHELL:-include \"${CMAKE_CURRENT_SOURCE_DIR}/src/prelude.h\">"
+)
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBUV REQUIRED IMPORTED_TARGET libuv)
 pkg_check_modules(LIBGIT2 REQUIRED IMPORTED_TARGET libgit2)
@@ -32,6 +36,7 @@ add_executable(
 )
 
 target_link_libraries(dev-mux PRIVATE PkgConfig::LIBUV PkgConfig::LIBGIT2 PkgConfig::LUA)
+target_include_directories(dev-mux PRIVATE src/)
 
 if(APPLE)
     target_compile_definitions(dev-mux PRIVATE _DARWIN_C_SOURCE)
