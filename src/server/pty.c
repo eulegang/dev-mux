@@ -1,6 +1,7 @@
 #include "pty.h"
 
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 #include <util.h>
 #include <uv.h>
@@ -103,6 +104,16 @@ err_close:
 err_free:
   free(self);
   return NULL;
+}
+
+void server_pty_resize(server_pty *self, u16 cols, u16 lines) {
+  struct winsize ws = {
+      .ws_row = lines,
+      .ws_col = cols,
+  };
+
+  if (ioctl(self->fd, TIOCSWINSZ, &ws) == -1)
+    perror("TIOCSWINSZ");
 }
 
 void server_pty_deinit(server_pty *pty) {
