@@ -143,7 +143,6 @@ client_config *client_config_load(void) {
   return config;
 
 done:
-  lua_close(lua);
   free(path);
   client_config_close(config);
   return NULL;
