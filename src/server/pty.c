@@ -10,8 +10,8 @@
 #define DEFAULT_COLS 202
 
 struct server_pty {
-  uv_process_t proc;
   uv_pipe_t pipe;
+  uv_process_t proc;
   int fd;
   char status;
 };
@@ -114,6 +114,12 @@ s32 server_pty_resize(server_pty *self, u16 cols, u16 lines) {
 
   return ioctl(self->fd, TIOCSWINSZ, &ws);
 }
+
+s32 server_pty_kill(server_pty *self, s32 signal) {
+  return uv_process_kill(&self->proc, signal);
+}
+
+uv_stream_t *server_pty_stream(server_pty *self) { return (uv_stream_t *)self; }
 
 void server_pty_deinit(server_pty *pty) {
   uv_close((uv_handle_t *)&pty->pipe, server_pty_on_close_pipe);
