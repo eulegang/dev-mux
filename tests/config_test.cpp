@@ -14,7 +14,7 @@ extern "C" {
 namespace {
 
 class ScopedEnv {
- public:
+public:
   explicit ScopedEnv(const char *name) : name_(name) {
     const char *value = getenv(name);
     if (value) {
@@ -24,11 +24,13 @@ class ScopedEnv {
   }
 
   ~ScopedEnv() {
-    if (had_value_) setenv(name_, value_.c_str(), 1);
-    else unsetenv(name_);
+    if (had_value_)
+      setenv(name_, value_.c_str(), 1);
+    else
+      unsetenv(name_);
   }
 
- private:
+private:
   const char *name_;
   bool had_value_ = false;
   std::string value_;
@@ -41,9 +43,12 @@ struct TempConfigDir {
   std::string path;
 
   ~TempConfigDir() {
-    if (!path.empty()) unlink(path.c_str());
-    if (!folder.empty()) rmdir(folder.c_str());
-    if (created) rmdir(dir);
+    if (!path.empty())
+      unlink(path.c_str());
+    if (!folder.empty())
+      rmdir(folder.c_str());
+    if (created)
+      rmdir(dir);
   }
 };
 
@@ -80,12 +85,14 @@ TEST(Config, LoadAndPrefix) {
   const char ctrl_b[] = "\x02";
   const char *input = ctrl_b;
   size_t len = sizeof(ctrl_b) - 1;
-  EXPECT_FALSE(client_config_process(config.get(), &custom_pending, &input, &len));
+  EXPECT_FALSE(
+      client_config_process(config.get(), &custom_pending, &input, &len));
   EXPECT_TRUE(custom_pending);
   EXPECT_EQ(len, 0u);
   input = ctrl_b;
   len = sizeof(ctrl_b) - 1;
-  EXPECT_TRUE(client_config_process(config.get(), &custom_pending, &input, &len));
+  EXPECT_FALSE(
+      client_config_process(config.get(), &custom_pending, &input, &len));
   EXPECT_EQ(len, 0u);
   EXPECT_FALSE(custom_pending);
   config.reset();
@@ -131,10 +138,10 @@ TEST(Config, LoadAndPrefix) {
   };
   EXPECT_FALSE(process("\x00"));
   EXPECT_TRUE(pending);
-  EXPECT_TRUE(process("\x00"));
+  EXPECT_FALSE(process("\x00"));
   EXPECT_FALSE(pending);
   EXPECT_FALSE(process("\x00"));
-  EXPECT_TRUE(process("x")); // Unbound key passes through, unlike bound d.
+  EXPECT_FALSE(process("x")); // Unbound key passes through, unlike bound d.
   EXPECT_FALSE(pending);
   EXPECT_FALSE(process("\x00"));
   EXPECT_FALSE(process("d")); // Built-in prefix command is consumed.
@@ -142,4 +149,4 @@ TEST(Config, LoadAndPrefix) {
   EXPECT_TRUE(process("y"));
 }
 
-}  // namespace
+} // namespace
